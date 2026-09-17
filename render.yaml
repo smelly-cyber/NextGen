@@ -1,0 +1,31 @@
+# Render Blueprint for the NextGen Tweaks backend.
+#
+# One Docker web service runs BOTH the licence/validation server and the Discord
+# bot (they share one SQLite database on a persistent disk). Render gives the web
+# service a public HTTPS URL and terminates TLS for it.
+#
+# To use: push this repo to GitHub, then in Render choose "New +" -> "Blueprint"
+# and point it at the repo. Fill in the secret env vars when prompted.
+services:
+  - type: web
+    name: nextgen-backend
+    runtime: docker
+    # The build context is the repo root so the image can include assets/.
+    dockerfilePath: ./authentication/deploy/Dockerfile
+    dockerContext: .
+    plan: starter          # A paid plan: needed for a persistent disk and 24/7 uptime.
+    healthCheckPath: /v1/health
+    autoDeploy: true
+    disk:
+      name: ngt-data       # Holds issuer_key.bin (secret) + licenses.db.
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DISCORD_TOKEN   # Your bot token. Required for the Discord bot.
+        sync: false
+      - key: NGT_GUILD_ID    # Optional: a server (guild) id for instant command registration.
+        sync: false
+      - key: NGT_ADMIN_ROLE  # Optional: a role id allowed to run the bot commands.
+        sync: false
+      - key: NGT_LOG_WEBHOOK # Optional: a Discord webhook the app posts login logs to.
+        sync: false

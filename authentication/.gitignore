@@ -1,0 +1,10 @@
+# Runtime data - NEVER commit the private issuer seed or the licence database.
+data/issuer_key.bin
+data/session_secret.bin
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Build output
+build/
+bot/build/

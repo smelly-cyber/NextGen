@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+build/
+dist/
+*.obj
+*.o
+*.exe
+*.dll
+*.a
+*.dll.a
+CMakeCache.txt
+CMakeFiles/
+*_autogen/
+
+# ---------------------------------------------------------------------------
+# Runtime secrets & data - NEVER commit these.
+#   issuer_key.bin       Ed25519 private key: can mint licences.
+#   session_secret.bin   signs session tokens.
+#   licenses.db          the licence database (user licences + HWIDs).
+# On Render these are (re)generated on the persistent disk on first boot.
+# ---------------------------------------------------------------------------
+authentication/data/
+**/issuer_key.bin
+**/issuer_public.bin
+**/session_secret.bin
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+*.token
+
+# ---------------------------------------------------------------------------
+# Editor / OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.user
+Thumbs.db
+.DS_Store

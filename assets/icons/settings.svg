@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="6"/>
+  <circle cx="12" cy="12" r="2.9"/>
+  <path d="M18.00 12.00 20.10 12.00"/>
+  <path d="M16.24 16.24 17.73 17.73"/>
+  <path d="M12.00 18.00 12.00 20.10"/>
+  <path d="M7.76 16.24 6.27 17.73"/>
+  <path d="M6.00 12.00 3.90 12.00"/>
+  <path d="M7.76 7.76 6.27 6.27"/>
+  <path d="M12.00 6.00 12.00 3.90"/>
+  <path d="M16.24 7.76 17.73 6.27"/>
+</svg>

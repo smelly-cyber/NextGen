@@ -1,0 +1,11 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <!-- Deliberately empty.
+
+         Both the logo assets AND every SVG in assets/icons are embedded
+         automatically by CMake (see the qt_add_resources() globs in
+         CMakeLists.txt). Dropping a new icon into assets/icons is therefore all
+         that is needed - there is no list here to forget to update, which is
+         exactly the mistake that used to leave new icons invisible at runtime. -->
+    <qresource prefix="/"/>
+</RCC>

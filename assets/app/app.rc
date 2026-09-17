@@ -1,0 +1,3 @@
+// Windows executable icon. IDI_ICON1 as the first icon makes Explorer / the
+// taskbar use it as the application icon.
+IDI_ICON1 ICON "nextgen_tweaks.ico"
