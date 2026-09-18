@@ -26,8 +26,12 @@ RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build -j"$(nproc)"
 
 # Discord bot (fetches and builds D++ on the way - this is the slow step).
+# D++ is template-heavy: each parallel compile can use several hundred MB, so
+# building with all cores (-j$(nproc)) overruns the RAM on Render's build
+# instance and the OOM killer aborts the build mid-compile. Cap the job count so
+# peak memory stays within bounds. Slower, but it actually finishes.
 RUN cmake -S bot -B bot/build -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build bot/build -j"$(nproc)"
+    && cmake --build bot/build -j2
 
 # ---- Runtime stage ---------------------------------------------------------
 FROM debian:bookworm-slim AS runtime
