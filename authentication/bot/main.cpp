@@ -129,11 +129,11 @@ bool isAdmin(const dpp::slashcommand_t &event, const std::string &adminRoles,
     return false;
 }
 
-std::string formatTime(std::int64_t unix)
+std::string formatTime(std::int64_t unixSeconds)
 {
-    if (unix == 0)
+    if (unixSeconds == 0)
         return "-";
-    std::time_t t = static_cast<std::time_t>(unix);
+    std::time_t t = static_cast<std::time_t>(unixSeconds);
     char buffer[32];
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M UTC", std::gmtime(&t));
     return buffer;

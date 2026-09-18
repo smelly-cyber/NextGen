@@ -90,11 +90,11 @@ std::string argValue(const std::vector<std::string> &args, const std::string &fl
     return {};
 }
 
-std::string formatTime(std::int64_t unix)
+std::string formatTime(std::int64_t unixSeconds)
 {
-    if (unix == 0)
+    if (unixSeconds == 0)
         return "-";
-    std::time_t t = static_cast<std::time_t>(unix);
+    std::time_t t = static_cast<std::time_t>(unixSeconds);
     char buffer[32];
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", std::localtime(&t));
     return buffer;
