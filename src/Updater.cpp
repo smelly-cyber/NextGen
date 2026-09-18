@@ -96,8 +96,14 @@ void Updater::checkAutomatic()
         if (!isNewer(tag, QCoreApplication::applicationVersion()))
             return; // Already up to date.
 
-        // Find the Windows .exe asset and its GitHub-published SHA-256.
-        QString url, sha;
+        // Find the app's own .exe asset and its GitHub-published SHA-256.
+        //
+        // The release repo also holds unrelated files (the NVIDIA Profile
+        // Inspector exe, a .nip), so match our own build by name first - an asset
+        // whose name contains "NextGen" and ends in .exe - and only fall back to
+        // a lone .exe if nothing matches. That way an unrelated .exe accidentally
+        // attached to a release can never be mistaken for an app update.
+        QString url, sha, fallbackUrl, fallbackSha;
         for (const QJsonValue &value : release.value(QStringLiteral("assets")).toArray()) {
             const QJsonObject asset = value.toObject();
             const QString name = asset.value(QStringLiteral("name")).toString();
@@ -106,11 +112,23 @@ void Updater::checkAutomatic()
             const QUrl candidate(asset.value(QStringLiteral("browser_download_url")).toString());
             if (!isHttps(candidate))
                 continue;
-            url = candidate.toString();
             const QString digest = asset.value(QStringLiteral("digest")).toString();
-            if (digest.startsWith(QLatin1String("sha256:")))
-                sha = digest.mid(7);
-            break;
+            const QString assetSha =
+                digest.startsWith(QLatin1String("sha256:")) ? digest.mid(7) : QString();
+
+            if (name.contains(QLatin1String("NextGen"), Qt::CaseInsensitive)) {
+                url = candidate.toString();
+                sha = assetSha;
+                break; // Our build - use it.
+            }
+            if (fallbackUrl.isEmpty()) {
+                fallbackUrl = candidate.toString();
+                fallbackSha = assetSha;
+            }
+        }
+        if (url.isEmpty()) {
+            url = fallbackUrl;
+            sha = fallbackSha;
         }
         if (!url.isEmpty())
             offer(tag, url, sha);
