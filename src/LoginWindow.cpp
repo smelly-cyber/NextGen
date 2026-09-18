@@ -5,16 +5,22 @@
 #include "CustomTitleBar.h"
 #include "LicenseClient.h"
 #include "LoginPanel.h"
+#include "MessageDialog.h"
 #include "PanelSeparator.h"
 #include "Theme.h"
 
+#include <QDesktopServices>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QUrl>
 
 namespace {
 /// Relative widths of the two panels (matches the reference design).
 constexpr int kBrandingStretch = 48;
 constexpr int kLoginStretch = 52;
+
+/// Where "Forgot password?" sends people: the Discord server, to open a ticket.
+const QLatin1String kDiscordInvite("https://discord.gg/5pQUCbjA8V");
 } // namespace
 
 LoginWindow::LoginWindow(QWidget *parent)
@@ -72,8 +78,18 @@ void LoginWindow::connectSignals()
             &LoginWindow::openCreateAccountDialog);
 
     connect(m_loginPanel, &LoginPanel::forgotPasswordRequested, this, [this] {
-        m_loginPanel->showInfo(
-            tr("Ask an admin in the Nextgen Tweaks Discord to reset your account."));
+        // Password resets are handled by an admin, not self-service, so point the
+        // user at the Discord support ticket flow in a proper popup window.
+        MessageDialog dialog(this, tr("Forgot Password"));
+        dialog.setTone(MessageDialog::Tone::Info);
+        dialog.setHeading(tr("Reset your password"));
+        dialog.setBody(tr("For security, passwords can only be reset by an admin.<br><br>"
+                          "Open a support ticket in the <b>NEXTGEN TWEAKS</b> Discord server "
+                          "and an admin will reset your account for you."));
+        dialog.addButton(tr("Open Discord"), ModernButton::Variant::Primary, 1, true);
+        dialog.addButton(tr("Close"), ModernButton::Variant::Secondary, 0);
+        if (dialog.run() == 1)
+            QDesktopServices::openUrl(QUrl(QString(kDiscordInvite)));
     });
 
     // --- Licensing backend --------------------------------------------------

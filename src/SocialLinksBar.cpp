@@ -10,7 +10,7 @@ namespace {
 // -------------------------------------------------------------------------
 //  REPLACE THESE with the real links. Each icon opens its URL in the browser.
 // -------------------------------------------------------------------------
-const char *kDiscordUrl = "https://discord.gg/your-invite-here";
+const char *kDiscordUrl = "https://discord.gg/5pQUCbjA8V";
 const char *kTikTokUrl = "https://www.tiktok.com/@your-handle";
 const char *kYouTubeUrl = "https://www.youtube.com/@your-channel";
 } // namespace
