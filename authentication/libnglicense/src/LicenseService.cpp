@@ -633,4 +633,41 @@ ValidationResult LicenseService::redeemLicense(std::int64_t accountId,
     return state;
 }
 
+bool LicenseService::resetPassword(std::int64_t accountId, const std::string &newPassword,
+                                   std::string *error)
+{
+    const auto fail = [error](const std::string &message) {
+        if (error)
+            *error = message;
+        return false;
+    };
+
+    if (newPassword.size() < 6)
+        return fail("Choose a password of at least 6 characters.");
+
+    bool exists = false;
+    m_db.query("SELECT id FROM accounts WHERE id=?", {accountId},
+               [&](const Row &) { exists = true; });
+    if (!exists)
+        return fail("Unknown account.");
+
+    // Same PBKDF2 parameters as account creation, with a brand new salt, so a
+    // later sign-in (which reads the per-account salt + iterations) verifies the
+    // new password. The old hash is overwritten - the previous password stops
+    // working immediately.
+    const Bytes salt = crypto::randomBytes(16);
+    const int iterations = 200000;
+    const auto hash = crypto::pbkdf2(newPassword, salt, iterations);
+
+    std::string err;
+    const bool ok = m_db.execute(
+        "UPDATE accounts SET pass_hash=?, pass_salt=?, iterations=? WHERE id=?",
+        {crypto::toHex(Bytes(hash.begin(), hash.end())), crypto::toHex(salt), iterations,
+         accountId},
+        &err);
+    if (!ok)
+        return fail("Could not update the password: " + err);
+    return true;
+}
+
 } // namespace ngl

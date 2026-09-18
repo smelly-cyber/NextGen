@@ -240,6 +240,54 @@ bool isOwnerLicence(Database &db, const std::string &keyId)
     return owner;
 }
 
+/// A readable random password for an admin-driven reset. Avoids ambiguous
+/// characters (0/O, 1/l/I) so it can be typed or read aloud without confusion.
+std::string randomPassword(std::size_t length = 12)
+{
+    static const char charset[] = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const Bytes bytes = crypto::randomBytes(length);
+    std::string out;
+    out.reserve(length);
+    for (std::size_t i = 0; i < length; ++i)
+        out.push_back(charset[bytes[i] % (sizeof(charset) - 1)]);
+    return out;
+}
+
+/// Finds the account id behind a username, or a licence key / key id bound to
+/// it. Returns 0 when nothing matches; fills \a username and \a isOwner. The
+/// caller holds the db lock.
+std::int64_t resolveAccount(Database &db, LicenseService &service, const std::string &username,
+                            const std::string &licenseIn, std::string *outUsername, bool *isOwner)
+{
+    std::int64_t accountId = 0;
+    if (!username.empty()) {
+        db.query("SELECT id, username, COALESCE(is_owner,0) FROM accounts WHERE username=?",
+                 {username}, [&](const Row &row) {
+                     accountId = row.integer(0);
+                     if (outUsername)
+                         *outUsername = row.text(1);
+                     if (isOwner)
+                         *isOwner = row.integer(2) != 0;
+                 });
+        return accountId;
+    }
+    if (!licenseIn.empty()) {
+        const std::string keyId = service.resolveKeyId(licenseIn);
+        if (keyId.empty())
+            return 0;
+        db.query("SELECT a.id, a.username, COALESCE(a.is_owner,0) FROM licenses l"
+                 " JOIN accounts a ON a.id = l.bound_account_id WHERE l.key_id=?",
+                 {keyId}, [&](const Row &row) {
+                     accountId = row.integer(0);
+                     if (outUsername)
+                         *outUsername = row.text(1);
+                     if (isOwner)
+                         *isOwner = row.integer(2) != 0;
+                 });
+    }
+    return accountId;
+}
+
 dpp::message issueLicence(dpp::cluster &bot, LicenseService &service, const std::string &issuedBy,
                           const std::string &duration, std::int64_t uses, bool lifetime,
                           const std::string &forUser, const std::string &note)
@@ -430,6 +478,19 @@ int main()
             dpp::slashcommand viewl("viewlicenses", "List all licences (yours is never shown)",
                                     bot.me.id);
 
+            // --- /resetpassword : set a new password for a user's account ----
+            dpp::slashcommand rpw("resetpassword",
+                                  "Reset an account's password by username or licence", bot.me.id);
+            rpw.add_option(dpp::command_option(dpp::co_string, "username",
+                                               "The account username", false));
+            rpw.add_option(dpp::command_option(dpp::co_string, "license",
+                                               "A licence key (NGTL-...) or key id bound to the "
+                                               "account",
+                                               false));
+            rpw.add_option(dpp::command_option(dpp::co_string, "password",
+                                               "New password (leave blank to auto-generate one)",
+                                               false));
+
             if (!guildId.empty()) {
                 const dpp::snowflake gid(std::stoull(guildId));
                 bot.guild_command_create(cmd, gid);
@@ -440,6 +501,7 @@ int main()
                 bot.guild_command_create(rhw, gid);
                 bot.guild_command_create(clr, gid);
                 bot.guild_command_create(viewl, gid);
+                bot.guild_command_create(rpw, gid);
             } else {
                 bot.global_command_create(cmd);
                 bot.global_command_create(gen);
@@ -449,6 +511,7 @@ int main()
                 bot.global_command_create(rhw);
                 bot.global_command_create(clr);
                 bot.global_command_create(viewl);
+                bot.global_command_create(rpw);
             }
         }
     });
@@ -457,7 +520,8 @@ int main()
         const std::string cmdName = event.command.get_command_name();
         if (cmdName != "license" && cmdName != "gen" && cmdName != "revoke"
             && cmdName != "blacklist" && cmdName != "unblacklist" && cmdName != "resethwid"
-            && cmdName != "clearlicenses" && cmdName != "viewlicenses")
+            && cmdName != "clearlicenses" && cmdName != "viewlicenses"
+            && cmdName != "resetpassword")
             return;
 
         if (!isAdmin(event, adminRole)) {
@@ -593,6 +657,60 @@ int main()
             dpp::embed e = brandEmbed("HWID Reset");
             e.add_field("Key id", keyId, true);
             e.set_description("The licence is unbound and can be activated on a new machine.");
+            event.reply(brandMessage(e));
+            return;
+        }
+
+        // ---- /resetpassword : set a new password for an account ------------
+        if (cmdName == "resetpassword") {
+            const std::string username = optString(topOpts, "username");
+            const std::string licenseIn = optString(topOpts, "license");
+            std::string password = optString(topOpts, "password");
+
+            if (username.empty() && licenseIn.empty()) {
+                event.reply(errorMessage("Give a username: or a license: to reset."));
+                return;
+            }
+
+            std::string foundUser;
+            bool owner = false;
+            const std::int64_t accountId =
+                resolveAccount(*db, *service, username, licenseIn, &foundUser, &owner);
+            if (accountId == 0) {
+                event.reply(errorMessage(username.empty()
+                                             ? "No account is bound to that licence."
+                                             : "No account matches that username."));
+                return;
+            }
+            if (owner) {
+                event.reply(errorMessage("That is the owner account and cannot be reset here."));
+                return;
+            }
+
+            // No password given -> mint a temporary one to hand to the customer.
+            const bool generated = password.empty();
+            if (generated)
+                password = randomPassword();
+            if (password.size() < 6) {
+                event.reply(errorMessage("Choose a password of at least 6 characters."));
+                return;
+            }
+
+            std::string err;
+            if (!service->resetPassword(accountId, password, &err)) {
+                event.reply(errorMessage("Could not reset the password: " + err));
+                return;
+            }
+            logAudit(*db, issuedBy, "Reset account password (Discord /resetpassword)", foundUser);
+
+            dpp::embed e = brandEmbed("Password Reset");
+            e.add_field("Account", foundUser, true);
+            e.add_field("New password", "```" + password + "```", false);
+            e.set_description(generated
+                                  ? "Send this temporary password to the user. They can sign in "
+                                    "with it and change it later."
+                                  : "The account's password has been changed to the one you "
+                                    "supplied.");
             event.reply(brandMessage(e));
             return;
         }

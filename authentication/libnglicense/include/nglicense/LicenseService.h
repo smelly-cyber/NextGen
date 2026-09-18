@@ -141,6 +141,13 @@ public:
     ValidationResult redeemLicense(std::int64_t accountId, const std::string &licenseKey,
                                    const std::string &machineId);
 
+    /// Overwrites an account's password (an admin-driven reset, e.g. from the
+    /// Discord bot). Re-hashes \a newPassword with a fresh salt using the same
+    /// PBKDF2 parameters as account creation, so the next sign-in verifies
+    /// against it. Returns false and sets \a error on failure.
+    bool resetPassword(std::int64_t accountId, const std::string &newPassword,
+                       std::string *error = nullptr);
+
 private:
     /// Core licence-state check shared by every path. Optionally consumes a use.
     ValidationResult evaluate(const std::string &keyId, const std::string &machineId,
