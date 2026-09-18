@@ -26,7 +26,7 @@ const QLatin1String kDiscordInvite("https://discord.gg/5pQUCbjA8V");
 LoginWindow::LoginWindow(QWidget *parent)
     : FramelessWindow(parent)
 {
-    setWindowTitle(tr("NEXTGEN TWEAKS"));
+    setWindowTitle(tr("NextGen Tweaks"));
     setWindowIcon(QIcon(QStringLiteral(":/assets/logo/nextgen_tweaks_mark.png")));
 
     // A sign-in dialog is fixed format: no maximise, no full screen.

@@ -33,7 +33,7 @@ const char *kSectionTagline = QT_TRANSLATE_NOOP("MainWindow", "Nextgen Tweaks  â
 MainWindow::MainWindow(QWidget *parent)
     : FramelessWindow(parent)
 {
-    setWindowTitle(tr("NEXTGEN TWEAKS"));
+    setWindowTitle(tr("NextGen Tweaks"));
     setWindowIcon(QIcon(QStringLiteral(":/assets/logo/nextgen_tweaks_mark.png")));
 
     // The workspace is resizable by dragging its edges, but like the sign-in
