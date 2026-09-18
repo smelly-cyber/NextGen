@@ -42,7 +42,7 @@ class LicenseClient : public QObject
 public:
     explicit LicenseClient(QObject *parent = nullptr);
 
-    /// Base URL of the auth server (default from NGT_AUTH_URL or localhost).
+    /// Base URL of the auth server (NGT_AUTH_URL, else the hosted backend).
     void setServerUrl(const QString &url);
     QString serverUrl() const { return m_serverUrl; }
 

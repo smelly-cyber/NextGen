@@ -27,7 +27,8 @@ ClientCommandPoller::ClientCommandPoller(QObject *parent)
     , m_network(new QNetworkAccessManager(this))
     , m_timer(new QTimer(this))
 {
-    m_serverUrl = qEnvironmentVariable("NGT_AUTH_URL", QStringLiteral("http://127.0.0.1:8787"));
+    m_serverUrl = qEnvironmentVariable(
+        "NGT_AUTH_URL", QStringLiteral("https://nextgen-backend-n9i3.onrender.com"));
     m_lastUpdateShown = QSettings().value(kLastUpdateKey).toString();
     m_timer->setInterval(kPollIntervalMs);
     connect(m_timer, &QTimer::timeout, this, &ClientCommandPoller::poll);

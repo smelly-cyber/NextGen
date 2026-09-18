@@ -41,7 +41,8 @@ LicenseClient::LicenseClient(QObject *parent)
     : QObject(parent)
     , m_network(new QNetworkAccessManager(this))
 {
-    m_serverUrl = qEnvironmentVariable("NGT_AUTH_URL", QStringLiteral("http://127.0.0.1:8787"));
+    m_serverUrl = qEnvironmentVariable(
+        "NGT_AUTH_URL", QStringLiteral("https://nextgen-backend-n9i3.onrender.com"));
 }
 
 void LicenseClient::setServerUrl(const QString &url)
