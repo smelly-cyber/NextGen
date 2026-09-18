@@ -33,6 +33,12 @@ RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
 RUN cmake -S bot -B bot/build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build bot/build -j2
 
+# D++ builds as a shared library (libdpp.so.*), which nextgen_bot loads at
+# runtime. Stash it (following symlinks) so the slim runtime image can include
+# it - otherwise the bot fails to start with "libdpp.so...: cannot open shared
+# object file".
+RUN mkdir -p /dpplib && cp -a $(find /src/bot/build -name 'libdpp.so*') /dpplib/
+
 # ---- Runtime stage ---------------------------------------------------------
 FROM debian:bookworm-slim AS runtime
 
@@ -47,6 +53,11 @@ COPY --from=build /src/bot/build/nextgen_bot /app/nextgen_bot
 COPY assets                                  /app/assets
 COPY authentication/deploy/start.sh          /app/start.sh
 RUN chmod +x /app/start.sh
+
+# The D++ shared library the bot links against, into a standard library path,
+# then register it with the dynamic loader so nextgen_bot can find it.
+COPY --from=build /dpplib/ /usr/local/lib/
+RUN ldconfig
 
 # The persistent disk is mounted here; issuer keys + licenses.db live on it.
 ENV NGT_DATA_DIR=/data
