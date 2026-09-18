@@ -20,6 +20,10 @@
 namespace {
 const QLatin1String kSessionTokenKey("license/sessionToken");
 const QLatin1String kSessionUserKey("license/sessionUser");
+
+// The owner access key. Not a signed licence - a memorable sentinel the server
+// recognises to grant owner access. Must match `ownerKey` in the server exactly.
+const QLatin1String kOwnerAccessKey("NGT-OWNER-ACCESS");
 } // namespace
 
 QString LicenseResult::entitlementSummary() const
@@ -52,9 +56,14 @@ void LicenseClient::setServerUrl(const QString &url)
 
 bool LicenseClient::isKeyWellFormed(const QString &licenseKey)
 {
+    const QString trimmed = licenseKey.trimmed();
+    // The owner access key is a plain sentinel the server validates, not a signed
+    // licence, so it would never pass the signature check. Let it through the
+    // client-side gate so it reaches the server, which grants owner access.
+    if (trimmed == kOwnerAccessKey)
+        return true;
     // Offline Ed25519 signature check against the embedded issuer public key.
-    return ngl::license::parseAndVerify(kNextGenLicensePublicKey,
-                                        licenseKey.trimmed().toStdString())
+    return ngl::license::parseAndVerify(kNextGenLicensePublicKey, trimmed.toStdString())
         .has_value();
 }
 
