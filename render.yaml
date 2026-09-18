@@ -25,7 +25,9 @@ services:
         sync: false
       - key: NGT_GUILD_ID    # Optional: a server (guild) id for instant command registration.
         sync: false
-      - key: NGT_ADMIN_ROLE  # Optional: a role id allowed to run the bot commands.
+      - key: NGT_ADMIN_ROLE  # Optional: role id(s) allowed to run the bot commands (comma-separated).
+        sync: false
+      - key: NGT_ADMIN_USERS # Optional: user id(s) allowed to run the bot commands (comma-separated).
         sync: false
       - key: NGT_LOG_WEBHOOK # Optional: a Discord webhook the app posts login logs to.
         sync: false

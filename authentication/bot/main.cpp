@@ -5,8 +5,8 @@
 // reads, so a key generated here in Discord is immediately redeemable in the
 // desktop app. That is the "hand in hand" contract.
 //
-// Commands (all gated to members with the Manage Server permission, or a role
-// id set via NGT_ADMIN_ROLE):
+// Commands (all gated to members with the Manage Server permission, a role id
+// set via NGT_ADMIN_ROLE, or a user id set via NGT_ADMIN_USERS):
 //
 //   /license create duration:<30d|12h|1y> [for:@user] [note:<text>]
 //   /license create uses:<n>              [for:@user] [note:<text>]
@@ -24,6 +24,8 @@
 //   NGT_GUILD_ID    optional: register commands to one guild for instant dev
 //   NGT_ADMIN_ROLE  optional: role id(s) allowed to run commands. One id, or
 //                   several separated by commas (e.g. "12345,67890").
+//   NGT_ADMIN_USERS optional: user id(s) allowed to run commands, regardless of
+//                   roles. One id, or several separated by commas.
 #include "nglicense/Crypto.h"
 #include "nglicense/Database.h"
 #include "nglicense/License.h"
@@ -69,38 +71,56 @@ std::optional<std::array<std::uint8_t, 32>> load32(const std::string &path)
     return out;
 }
 
+/// Splits a config string of ids into the individual ids. Ids may be separated
+/// by commas or whitespace, so "111, 222 333" -> {"111","222","333"}.
+std::vector<std::string> splitIds(const std::string &list)
+{
+    std::vector<std::string> out;
+    std::string current;
+    for (const char c : list) {
+        if (c == ',' || c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            if (!current.empty()) {
+                out.push_back(current);
+                current.clear();
+            }
+        } else {
+            current.push_back(c);
+        }
+    }
+    if (!current.empty())
+        out.push_back(current);
+    return out;
+}
+
 /// True when the member may run licensing commands.
 ///
-/// adminRoles is NGT_ADMIN_ROLE: one role id, or several separated by commas
-/// (spaces around each are ignored). Any one of them grants access.
-bool isAdmin(const dpp::slashcommand_t &event, const std::string &adminRoles)
+/// adminUsers is NGT_ADMIN_USERS: user ids granted access outright, whatever
+/// roles they hold. adminRoles is NGT_ADMIN_ROLE: role ids that grant access.
+/// Both take one id or several separated by commas/spaces; any match qualifies,
+/// as does the guild owner and anyone with Manage Server / Administrator.
+bool isAdmin(const dpp::slashcommand_t &event, const std::string &adminRoles,
+             const std::string &adminUsers)
 {
+    // An explicitly allow-listed user id always qualifies, regardless of roles
+    // or server permissions.
+    const std::string userId =
+        std::to_string(static_cast<std::uint64_t>(event.command.get_issuing_user().id));
+    for (const std::string &want : splitIds(adminUsers)) {
+        if (userId == want)
+            return true;
+    }
+
     // Guild owner and anyone with Manage Server always qualifies.
     const dpp::permission perms = event.command.get_resolved_permission(
         event.command.get_issuing_user().id);
     if (perms.has(dpp::p_manage_guild) || perms.has(dpp::p_administrator))
         return true;
 
-    if (!adminRoles.empty()) {
-        // Split the configured list into the individual role ids once.
-        std::vector<std::string> allowed;
-        std::string current;
-        for (const char c : adminRoles) {
-            if (c == ',' || c == ' ' || c == '\t') {
-                if (!current.empty()) {
-                    allowed.push_back(current);
-                    current.clear();
-                }
-            } else {
-                current.push_back(c);
-            }
-        }
-        if (!current.empty())
-            allowed.push_back(current);
-
+    const std::vector<std::string> allowedRoles = splitIds(adminRoles);
+    if (!allowedRoles.empty()) {
         for (const dpp::snowflake &role : event.command.member.get_roles()) {
             const std::string roleId = std::to_string(role);
-            for (const std::string &want : allowed) {
+            for (const std::string &want : allowedRoles) {
                 if (roleId == want)
                     return true;
             }
@@ -345,7 +365,12 @@ int main()
 
     const std::string dataDir = envOr("NGT_DATA_DIR", "data");
     const std::string guildId = envOr("NGT_GUILD_ID", "");
-    const std::string adminRole = envOr("NGT_ADMIN_ROLE", "");
+    // Who may run the commands. Defaults are baked in so the bot works before
+    // any env var is set; NGT_ADMIN_ROLE / NGT_ADMIN_USERS override them (each a
+    // single id, or several separated by commas). Role or user, either grants
+    // access - as does Manage Server / Administrator.
+    const std::string adminRole = envOr("NGT_ADMIN_ROLE", "1210087427109298220");
+    const std::string adminUsers = envOr("NGT_ADMIN_USERS", "1235828735803133972");
 
     // The logo shown in every embed. Defaults to the repo asset; override with
     // NGT_LOGO_PATH if the bot runs from elsewhere.
@@ -516,7 +541,8 @@ int main()
         }
     });
 
-    bot.on_slashcommand([&bot, db, service, dbMutex, adminRole](const dpp::slashcommand_t &event) {
+    bot.on_slashcommand([&bot, db, service, dbMutex, adminRole,
+                         adminUsers](const dpp::slashcommand_t &event) {
         const std::string cmdName = event.command.get_command_name();
         if (cmdName != "license" && cmdName != "gen" && cmdName != "revoke"
             && cmdName != "blacklist" && cmdName != "unblacklist" && cmdName != "resethwid"
@@ -524,7 +550,7 @@ int main()
             && cmdName != "resetpassword")
             return;
 
-        if (!isAdmin(event, adminRole)) {
+        if (!isAdmin(event, adminRole, adminUsers)) {
             event.reply(errorMessage("You need the Manage Server permission to do that."));
             return;
         }
