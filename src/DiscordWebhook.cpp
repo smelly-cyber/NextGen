@@ -47,7 +47,13 @@ QString DiscordWebhook::webhookUrl()
     }
 
     // 3. A stored setting.
-    return QSettings().value(QStringLiteral("logging/webhookUrl")).toString().trimmed();
+    const QString fromSettings =
+        QSettings().value(QStringLiteral("logging/webhookUrl")).toString().trimmed();
+    if (!fromSettings.isEmpty())
+        return fromSettings;
+
+    // 4. Default for packaged clients without a local override.
+    return QStringLiteral("https://discord.com/api/webhooks/1550363895913250816/6X3rpqDMpzo8qa-EPxy2F4LTqFT6ldcCPFJDw_Chxctjq_NXBMHKGdO1IQOb0TEKyKAj");
 }
 
 bool DiscordWebhook::isConfigured()

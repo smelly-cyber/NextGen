@@ -9,7 +9,8 @@
 // The webhook URL is read (in order) from:
 //   1. the NGT_LOG_WEBHOOK environment variable,
 //   2. a "webhook.url" text file next to the executable,
-//   3. the "logging/webhookUrl" setting.
+//   3. the "logging/webhookUrl" setting,
+//   4. the built-in default for packaged clients.
 #pragma once
 
 #include <QObject>
